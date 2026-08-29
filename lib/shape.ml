@@ -36,7 +36,11 @@ let clear color =
   Gl.clear_color color.r color.g color.b color.a;
   Gl.clear Gl.color_buffer_bit
 
-let draw_primitive (shape: primitive) = ()
+let draw_primitive (shape: primitive) =
+  match shape with
+  | Point p -> ()
+  | Line l -> ()
+  | Triangle t -> ()
 
 let draw (shapes: primitive list) =
   List.iter draw_primitive shapes
