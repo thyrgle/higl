@@ -1,0 +1,52 @@
+(lang dune 3.24)
+(name higl)
+(sections (lib .) (libexec .))
+(files
+ (lib
+  (META
+   dune-package
+   higl.a
+   higl.cma
+   higl.cmi
+   higl.cmt
+   higl.cmx
+   higl.cmxa
+   higl.ml
+   higl__Shader.cmi
+   higl__Shader.cmt
+   higl__Shader.cmx
+   higl__Shape.cmi
+   higl__Shape.cmt
+   higl__Shape.cmx
+   opam
+   shader.ml
+   shape.ml))
+ (libexec (higl.cmxs)))
+(library
+ (name higl)
+ (kind normal)
+ (archives (byte higl.cma) (native higl.cmxa))
+ (plugins (byte higl.cma) (native higl.cmxs))
+ (native_archives higl.a)
+ (requires tgls)
+ (main_module_name Higl)
+ (modes byte native)
+ (modules
+  (wrapped
+   (group
+    (alias
+     (obj_name higl)
+     (visibility public)
+     (kind alias)
+     (source (path Higl) (impl (path higl.ml-gen))))
+    (name Higl)
+    (modules
+     (module
+      (obj_name higl__Shader)
+      (visibility public)
+      (source (path Shader) (impl (path shader.ml))))
+     (module
+      (obj_name higl__Shape)
+      (visibility public)
+      (source (path Shape) (impl (path shape.ml))))))
+   (wrapped true))))

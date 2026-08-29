@@ -1,0 +1,15 @@
+lib: [
+  "_build/install/default/lib/higl/META"
+  "_build/install/default/lib/higl/dune-package"
+  "_build/install/default/lib/higl/higl.a"
+  "_build/install/default/lib/higl/higl.cma"
+  "_build/install/default/lib/higl/higl.cmi"
+  "_build/install/default/lib/higl/higl.cmt"
+  "_build/install/default/lib/higl/higl.cmx"
+  "_build/install/default/lib/higl/higl.cmxa"
+  "_build/install/default/lib/higl/higl.ml"
+  "_build/install/default/lib/higl/opam"
+]
+libexec: [
+  "_build/install/default/lib/higl/higl.cmxs"
+]

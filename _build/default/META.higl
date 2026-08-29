@@ -1,0 +1,6 @@
+description = ""
+requires = "tgls"
+archive(byte) = "higl.cma"
+archive(native) = "higl.cmxa"
+plugin(byte) = "higl.cma"
+plugin(native) = "higl.cmxs"
