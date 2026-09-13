@@ -1,0 +1,13 @@
+; Examples live in their own dune project so tsdl stays an optional
+; dependency: the root build never touches this directory (see the
+; (dirs ...) stanza in the root dune file).
+;
+; They depend on the installed higl package, so from the repo root:
+;   opam install .
+; then from this directory:
+;   dune build --root . ./triangle.exe
+;   ./_build/default/triangle.exe
+
+(executable
+ (name triangle)
+ (libraries higl tsdl))
