@@ -8,3 +8,5 @@ include Geom
 module Mesh = Mesh
 module Renderer = Renderer
 module Mat4 = Mat4
+module Glsl = Glsl
+module Pixelmap = Pixelmap

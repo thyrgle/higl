@@ -11,3 +11,7 @@
 (executable
  (name triangle)
  (libraries higl tsdl))
+
+(executable
+ (name pixelmap)
+ (libraries higl tsdl))

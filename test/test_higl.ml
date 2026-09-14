@@ -147,10 +147,158 @@ let test_ortho () =
   let mz1 = (m.{10} *. 1.) +. m.{14} in
   check "ortho maps z=+far (1) to -1" (close mz1 (-1.))
 
+(* --- Glsl: emitted fragment source --- *)
+
+(* First index of [sub] in [s] at or after [from]. *)
+let index_sub s sub from =
+  let n = String.length s and m = String.length sub in
+  if m = 0 then Some (max 0 from)
+  else
+    let rec go i =
+      if i + m > n then None
+      else if String.sub s i m = sub then Some i
+      else go (i + 1)
+    in
+    go (max 0 from)
+
+let count_sub s sub =
+  let n = ref 0 in
+  let pos = ref 0 in
+  (try
+     while true do
+       match index_sub s sub !pos with
+       | Some i ->
+           pos := i + String.length sub;
+           incr n
+       | None -> raise Not_found
+     done
+   with Not_found -> ());
+  !n
+
+let src ?(r = 1) ?(st = 1) ?(sh = `Square) ?(c = false) () =
+  let open Higl.Glsl in
+  let shape = match sh with `Square -> Square | `Cross -> Cross in
+  fragment_source
+    (program (fun s -> avg (nbhd ~radius:r ~stride:st ~shape ~center:c s)))
+
+let test_glsl_source () =
+  let open Higl.Glsl in
+  let tex_count s = count_sub s "texture(u_prev" in
+  let starts_with p s = String.length s >= String.length p
+      && String.sub s 0 (String.length p) = p in
+  let contains a b = count_sub a b > 0 in
+  check "glsl: version header"
+    (starts_with "#version 330 core" (src ()));
+  check "glsl: uniform contract"
+    (contains (src ()) "uniform sampler2D u_prev;"
+     && contains (src ()) "uniform vec2 u_resolution;"
+     && contains (src ()) "uniform vec2 u_mouse;"
+     && contains (src ()) "uniform float u_time;"
+     && contains (src ()) "out vec4 frag_color;");
+  check "glsl: px helper declared when sampling"
+    (contains (src ()) "vec2 px = 1.0 / u_resolution;");
+  check "glsl: avg (nbhd self) fetches 8 texels"
+    (tex_count (src ()) = 8);
+  check "glsl: avg scales by 1/8" (contains (src ()) "0.125");
+  check "glsl: stride 2 doubles offsets"
+    (contains (src ~st:2 ()) "vec2(-2.0, -2.0)"
+     && contains (src ~st:2 ()) "vec2(2.0, 2.0)"
+     && not (contains (src ~st:2 ()) "vec2(-1.0"));
+  check "glsl: cross shape fetches 4 texels"
+    (tex_count (src ~sh:`Cross ()) = 4);
+  check "glsl: center adds the pixel itself"
+    (tex_count (src ~c:true ()) = 9);
+  check "glsl: radius 2 fetches 24 texels"
+    (tex_count (src ~r:2 ()) = 24);
+  check "glsl: no px when not sampling"
+    (not (contains
+            (fragment_source (program (fun _ -> v4 (f 0.) (f 0.) (f 0.) (f 1.))))
+            "px"));
+  check "glsl: peek offset"
+    (contains (fragment_source (program (fun _ -> peek ~dx:3 ~dy:0)))
+        "texture(u_prev, v_uv + vec2(3.0, 0.0) * px)");
+  check "glsl: literals"
+    (contains (fragment_source (program (fun _ -> v4 (f 2.) (f 0.) (f 0.) (f 1.))))
+        "vec4(2.0, 0.0, 0.0, 1.0)");
+  check "glsl: swizzle"
+    (contains
+       (fragment_source (program (fun s -> v4 (x s) (y s) (f 0.) (f 1.))))
+       "(T0).x");
+  check "glsl: if_ / comparison"
+    (contains
+       (fragment_source
+          (program (fun s -> if_ (x s >. f 0.5) s (v4 (f 0.) (f 0.) (f 0.) (f 1.)))))
+       "?");
+  check "glsl: min_of folds min"
+    (contains (fragment_source (program (fun s -> min_of (nbhd s)))) "min(min(");
+  check "glsl: count_nonzero uses a per-neighbor predicate"
+    (contains (fragment_source (program (fun s ->
+         scale (count_nonzero (nbhd s)) s)))
+        "0.001");
+  check "glsl: weighted gaussian3 has its weights"
+    (contains (fragment_source (program (fun s ->
+         weighted gaussian3 (include_center (nbhd s))))) "0.0625"
+     && contains (fragment_source (program (fun s ->
+         weighted gaussian3 (include_center (nbhd s))))) "0.25")
+
+let test_glsl_offsets () =
+  let open Higl.Glsl in
+  (* offsets are documented to come out sorted by dy then dx. *)
+  let sort l = List.sort (fun (ax, ay) (bx, by) -> compare (ay, ax) (by, bx)) l in
+  let mem off l = List.mem off l in
+  let default = offsets (nbhd self) in
+  check "offsets: 8 Moore neighbors" (List.length default = 8);
+  check "offsets: no center by default" (not (mem (0, 0) default));
+  check "offsets: corners present"
+    (mem (-1, -1) default && mem (1, -1) default && mem (-1, 1) default
+     && mem (1, 1) default);
+  check "offsets: sorted"
+    (default = sort default);
+  check "offsets: cross is von Neumann"
+    (offsets (cross (nbhd self))
+     = sort [ (-1, 0); (0, -1); (1, 0); (0, 1) ]);
+  check "offsets: stride doubles"
+    (offsets (stride 2 (nbhd self)) = List.map (fun (x, y) -> (2 * x, 2 * y)) default);
+  check "offsets: center included on request"
+    (mem (0, 0) (offsets (include_center (nbhd self))));
+  check "offsets: radius 2 square has 24"
+    (List.length (offsets (radius 2 (nbhd self))) = 24)
+
+let test_glsl_cse () =
+  let open Higl.Glsl in
+  let s =
+    fragment_source
+      (program (fun self ->
+         let blur = avg (nbhd self) in
+         mix (mix self blur (f 0.25)) blur (f 0.25)))
+  in
+  check "cse: repeated subterm hoisted" (count_sub s "vec4 T0 = " = 1);
+  check "cse: hoisted local referenced twice" (count_sub s "T0" = 3);
+  let s2 = fragment_source (program (fun self -> self +. self)) in
+  check "cse: self sampled once"
+    (count_sub s2 "texture(u_prev, v_uv)" = 1 (* the hoisted decl *)
+     && count_sub s2 "texture(u_prev, v_uv + " = 0)
+
+let test_glsl_errors () =
+  let open Higl.Glsl in
+  let raises f = try f (); false with Invalid_argument _ -> true in
+  check "errors: nbhd radius 0" (raises (fun () -> ignore (nbhd ~radius:0 self)));
+  check "errors: stride 0" (raises (fun () -> ignore (stride 0 (nbhd self))));
+  check "errors: kernel must be square"
+    (raises (fun () -> ignore (kernel [|[|1.|]; [|2.; 3.|]|])));
+  check "errors: kernel must be odd-sized"
+    (raises (fun () -> ignore (kernel [| [| 1. |]; [| 2. |] |])));
+  check "errors: weighted size mismatch"
+    (raises (fun () -> ignore (weighted gaussian3 (radius 2 (nbhd self)))))
+
 let () =
   test_counts ();
   test_contents ();
   test_growth ();
   test_ortho ();
+  test_glsl_source ();
+  test_glsl_offsets ();
+  test_glsl_cse ();
+  test_glsl_errors ();
   if !failures > 0 then (Printf.printf "%d failures\n" !failures; exit 1);
   print_endline "all tests passed"

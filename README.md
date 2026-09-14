@@ -15,6 +15,9 @@ frame.
   cameras map any axis-aligned world box to the viewport
 - **Batched meshes** — primitives are cached CPU-side and re-uploaded
   only when dirty, so static geometry is cheap to redraw
+- **Pixel maps (GLSL ORM)** — describe fragment shaders with typed
+  OCaml combinators instead of raw GLSL strings; neighborhood
+  operations (`avg (nbhd self)`) compile to unrolled texel fetches
 
 ## Installation
 
@@ -153,6 +156,61 @@ dune build --root . ./triangle.exe
 ./_build/default/triangle.exe
 ```
 
+## Pixel maps: a GLSL ORM
+
+`Higl.Glsl` is a typed expression language for fragment programs — you
+compose OCaml values instead of writing GLSL strings, and there are no
+loops in the interface: neighborhood operations expand to unrolled
+texel fetches in the generated shader. `Higl.Pixelmap` is the runner
+that makes the feedback real: a ping-ponged texture pair, rendered to
+each `step`, that your program reads as `self`.
+
+```ocaml
+(* A program: one line of OCaml per pixel. *)
+let prog =
+  let open Higl.Glsl in
+  program (fun color_frag ->
+    let smooth = avg (nbhd color_frag) in         (* 8 Moore neighbors *)
+    let coarse = avg (stride 2 (nbhd color_frag)) in  (* every 2nd texel *)
+    mix color_frag (min smooth coarse) (f 0.5))
+```
+
+A `program`'s argument is the previous frame's color at this pixel, so
+`color_frag = avg (nbhd color_frag)` is the box blur you'd expect.
+Intermediates are plain OCaml `let`s; the compiler hoists repeated
+subexpressions into GLSL locals automatically. Neighborhoods
+transform (`stride`, `radius`, `cross`, `include_center`) and reduce
+(`sum`, `avg`, `min_of`, `max_of`, `count_nonzero`, `weighted`
+convolution with kernels like `gaussian3`), plus the generic
+`map_reduce`. The usual math builtins (`mix`, `clamp`, `smoothstep`,
+`dot`, `length`, ...) and swizzles are available, with `time`, `res`,
+`mouse`, and `uv` as inputs.
+
+Running it each frame:
+
+```ocaml
+let buf = Higl.Pixelmap.create ~width ~height () in
+Higl.Pixelmap.clear buf (Higl.color 0.0 0.0 0.0 1.0);
+
+(* each frame: *)
+Higl.Pixelmap.set_time buf seconds;
+Higl.Pixelmap.set_mouse buf ~x ~y;      (* normalized, bottom-left origin *)
+Higl.Pixelmap.step buf prog;             (* buf <- prog (buf) *)
+Higl.Pixelmap.draw buf                   (* blit to the screen *)
+```
+
+Buffers are RGBA8, so stored colors live in `0..1`. A complete demo
+(mouse-painted, blurring, fading trails) is
+[`examples/pixelmap.ml`](examples/pixelmap.ml):
+
+```sh
+dune build --root . ./pixelmap.exe   # from examples/
+./_build/default/pixelmap.exe
+```
+
+Use `Higl.Glsl.fragment_source` to inspect the generated shader — handy
+for debugging.
+
 ## Documentation
 
 Generate the API reference with [odoc](https://odoc.docs.ocaml.org/):
@@ -163,8 +221,8 @@ dune build @doc
 
 Then open `_build/default/_doc/_html/higl/index.html` in a browser. The
 entry point is the [`Higl`](lib/higl.ml) module; see `Higl.Renderer`,
-`Higl.Mesh`, `Higl.Mat4`, and the geometry types re-exported from
-`Higl` itself.
+`Higl.Mesh`, `Higl.Mat4`, `Higl.Glsl`, `Higl.Pixelmap`, and the
+geometry types re-exported from `Higl` itself.
 
 ## Testing
 
