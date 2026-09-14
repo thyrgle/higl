@@ -3,6 +3,8 @@
 
 open Tgl4
 
+(** Source of the default vertex shader (locations: 0 = pos3, 1 = color4,
+    2 = uv2; uniform [u_camera] is the ortho matrix). *)
 let default_vertex_source =
   {|#version 330 core
 layout (location = 0) in vec3 a_pos;
@@ -21,6 +23,7 @@ void main ()
   v_uv = a_uv;
 }|}
 
+(** Source of the default fragment shader (passes vertex color through). *)
 let default_fragment_source =
   {|#version 330 core
 in vec4 v_color;
@@ -65,6 +68,8 @@ let check_program name program =
     end
   end
 
+(** [compile ~kind name source] compiles [source] as a shader of [kind],
+    raising [Failure] with [name] and the GL info log on error. *)
 let compile ~kind name source =
   let shader = Gl.create_shader kind in
   Gl.shader_source shader source;
@@ -72,6 +77,8 @@ let compile ~kind name source =
   check_shader name shader;
   shader
 
+(** [link ~vertex ~fragment] links the two shaders into a program and
+    deletes the shaders, raising [Failure] on link error. *)
 let link ~vertex ~fragment =
   let program = Gl.create_program () in
   Gl.attach_shader program vertex;
@@ -82,7 +89,8 @@ let link ~vertex ~fragment =
   Gl.delete_shader fragment;
   program
 
-(* Returns the linked default program. *)
+(** [create_default ()] is the linked default program (see
+    [default_vertex_source] / [default_fragment_source]). *)
 let create_default () =
   let vertex =
     compile ~kind:Gl.vertex_shader "default vertex shader" default_vertex_source

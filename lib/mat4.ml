@@ -3,11 +3,13 @@
 
 type t = (float, Bigarray.float32_elt, Bigarray.c_layout) Bigarray.Array1.t
 
+(** [create ()] is a new zero matrix. *)
 let create () =
   let m = Bigarray.Array1.create Bigarray.float32 Bigarray.c_layout 16 in
   Bigarray.Array1.fill m 0.0;
   m
 
+(** [identity ()] is the identity matrix. *)
 let identity () =
   let m = create () in
   m.{0} <- 1.0;

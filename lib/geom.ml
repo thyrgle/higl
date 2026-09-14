@@ -3,13 +3,16 @@
    All primitives carry per-vertex colors: colors interpolate across the
    primitive (GL 2.x style smooth shading). *)
 
+(** A position in 3D space. *)
 type point = { x : float; y : float; z : float }
 
+(** An RGBA color; each channel is in \[0.0, 1.0\]. *)
 type color = { r : float; g : float; b : float; a : float }
 
 (** A vertex: position plus its own color. *)
 type vertex = { pos : point; color : color }
 
+(** A triangle with per-vertex colors (interpolated when rendered). *)
 type triangle = { v1 : vertex; v2 : vertex; v3 : vertex }
 
 (** A line segment of thickness [width] (world units). *)
@@ -18,18 +21,28 @@ type line = { a : vertex; b : vertex; width : float }
 (** A square of side [size] (world units) centered at [p]. *)
 type point_prim = { p : vertex; size : float }
 
+(** A drawable primitive. *)
 type primitive =
   | Triangle of triangle
   | Line of line
   | Point of point_prim
 
+(** Default width of a [line]. *)
 let default_width = 1.0
+
+(** Default size of a [point_prim]. *)
 let default_size = 1.0
 
+(** Opaque white. *)
 let white = { r = 1.0; g = 1.0; b = 1.0; a = 1.0 }
 
+(** [point x y z] is the point [(x, y, z)]. *)
 let point x y z = { x; y; z }
+
+(** [color r g b a] is the color with the given channel values. *)
 let color r g b a = { r; g; b; a }
+
+(** [vertex pos color] is a vertex at [pos] with [color]. *)
 let vertex pos color = { pos; color }
 
 (** [tri ?color p1 p2 p3] is a solid-color triangle. *)

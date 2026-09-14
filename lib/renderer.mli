@@ -5,6 +5,9 @@
 
 type t
 
+(** An orthographic camera: the axis-aligned box
+    [{left,right} x {bottom,top} x {near,far}] of world space mapped into
+    the viewport. *)
 type camera = {
   left : float;
   right : float;
@@ -22,8 +25,15 @@ val default_camera : width:float -> height:float -> camera
     (3.3+ for the default shader). Blending is enabled. *)
 val create : ?camera:camera -> unit -> t
 
+(** [get_camera t] is [t]'s current camera. *)
 val get_camera : t -> camera
+
+(** [set_camera t cam] replaces [t]'s camera; it takes effect on the next
+    [flush]. *)
 val set_camera : t -> camera -> unit
+
+(** [set_viewport t ~width ~height] sets the GL viewport to
+    [(0, 0, width, height)]. *)
 val set_viewport : t -> width:int -> height:int -> unit
 
 (** The renderer's own mesh; [queue] appends to it, [flush] draws it. *)

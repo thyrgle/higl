@@ -10,13 +10,26 @@ type t
     primitives (default 1024); meshes grow as needed. *)
 val create : ?capacity:int -> unit -> t
 
+(** [prim_count t] is the number of primitives queued in [t]. *)
 val prim_count : t -> int
+
+(** [is_dirty t] is [true] when [t] changed since its vertex/index caches
+    were last rebuilt. *)
 val is_dirty : t -> bool
 
+(** [add_prim t p] appends primitive [p] to [t]. *)
 val add_prim : t -> Geom.primitive -> unit
+
+(** [add_primitives t ps] appends all of [ps], in order. *)
 val add_primitives : t -> Geom.primitive list -> unit
+
+(** [add_triangle t tri] appends triangle [tri] to [t]. *)
 val add_triangle : t -> Geom.triangle -> unit
+
+(** [add_line t l] appends line [l] to [t]. *)
 val add_line : t -> Geom.line -> unit
+
+(** [add_point t p] appends point [p] to [t]. *)
 val add_point : t -> Geom.point_prim -> unit
 
 (** [clear t] empties the mesh. Does not free its internal buffers. *)
