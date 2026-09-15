@@ -19,6 +19,6 @@
  (name higl)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml tgls)
+ (depends ocaml tgls gg)
  (tags
   ("add topics" "to describe" your project)))

@@ -15,3 +15,7 @@
 (executable
  (name pixelmap)
  (libraries higl tsdl))
+
+(executable
+ (name sprites)
+ (libraries higl tsdl))

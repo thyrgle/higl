@@ -23,17 +23,21 @@ void main ()
   v_uv = a_uv;
 }|}
 
-(** Source of the default fragment shader (passes vertex color through). *)
+(** Source of the default fragment shader: vertex color multiplied by
+    the texture sample (the renderer binds a 1x1 white texture for
+    untextured primitives, so the multiplication is neutral there). *)
 let default_fragment_source =
   {|#version 330 core
 in vec4 v_color;
 in vec2 v_uv;
 
+uniform sampler2D u_tex;
+
 out vec4 frag_color;
 
 void main ()
 {
-  frag_color = v_color;
+  frag_color = v_color * texture (u_tex, v_uv);
 }|}
 
 let check_shader name shader =

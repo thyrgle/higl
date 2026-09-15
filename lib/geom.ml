@@ -1,7 +1,9 @@
 (* Core geometry and color types.
 
    All primitives carry per-vertex colors: colors interpolate across the
-   primitive (GL 2.x style smooth shading). *)
+    primitive (GL 2.x style smooth shading). *)
+
+module V2 = Gg.V2
 
 (** A position in 3D space. *)
 type point = { x : float; y : float; z : float }
@@ -21,11 +23,29 @@ type line = { a : vertex; b : vertex; width : float }
 (** A square of side [size] (world units) centered at [p]. *)
 type point_prim = { p : vertex; size : float }
 
+(** An axis-aligned rectangle. [x], [y] is the bottom-left corner in world
+    space (y up); [w], [h] is the size. *)
+type rect = { x : float; y : float; w : float; h : float }
+
+(** A textured quad: [tex]'s [src] region (pixel coordinates, top-left
+    origin) drawn into [dst] (world space), rotated [rotation] radians
+    counter-clockwise about [pivot] (world space), tinted with [tint].
+    Sprites draw at z = 0. *)
+type sprite = {
+  tex : Texture.t;
+  dst : rect;
+  src : rect;
+  rotation : float;
+  pivot : V2.t;
+  tint : color;
+}
+
 (** A drawable primitive. *)
 type primitive =
   | Triangle of triangle
   | Line of line
   | Point of point_prim
+  | Sprite of sprite
 
 (** Default width of a [line]. *)
 let default_width = 1.0
@@ -62,3 +82,27 @@ let tri_solid color t =
   { v1 = { t.v1 with color }
   ; v2 = { t.v2 with color }
   ; v3 = { t.v3 with color } }
+
+(** [rect x y w h] is the rectangle with bottom-left corner [(x, y)] and
+    size [(w, h)]. *)
+let rect x y w h = { x; y; w; h }
+
+(** [sprite ?src ?rotation ?pivot ?tint tex dst] is a textured quad of
+    [tex] filling [dst]. [src] (pixel coordinates, top-left origin)
+    defaults to the whole texture; [rotation] (CCW, radians about
+    [pivot]) defaults to [0.0]; [pivot] defaults to the center of [dst];
+    [tint] defaults to [white]. *)
+let sprite ?src ?(rotation = 0.0) ?pivot ?(tint = white) tex dst =
+  let src =
+    match src with
+    | Some s -> s
+    | None ->
+        rect 0.0 0.0 (float_of_int (Texture.width tex))
+          (float_of_int (Texture.height tex))
+  in
+  let pivot =
+    match pivot with
+    | Some p -> p
+    | None -> V2.v (dst.x +. (dst.w /. 2.0)) (dst.y +. (dst.h /. 2.0))
+  in
+  { tex; dst; src; rotation; pivot; tint }
