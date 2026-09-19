@@ -67,6 +67,13 @@ let gen_one gen =
     undefined; see [clear]. *)
 let create ~width ~height () =
   if width < 1 || height < 1 then invalid_arg "Pixelmap.create: bad size";
+  (* The quad VBO below is bound to the global GL_ARRAY_BUFFER target,
+     which is CONTEXT state, not VAO state. Save the caller's binding
+     and put it back, or their next buffer upload lands in the wrong
+     buffer (a renderer that uploads lazily on first flush is hit
+     hardest: nothing renders at all). *)
+  let saved = Bigarray.Array1.create Bigarray.int32 Bigarray.c_layout 1 in
+  Gl.get_integerv Gl.array_buffer_binding saved;
   (* Ping-pong textures: nearest filtering, edge clamping (so nbhd
      samples beyond the border stick to the edge texels). *)
   let texs = Array.make 2 0 in
@@ -110,6 +117,8 @@ let create ~width ~height () =
   Gl.buffer_data Gl.array_buffer 32 (Some verts) Gl.static_draw;
   Gl.enable_vertex_attrib_array 0;
   Gl.vertex_attrib_pointer 0 2 Gl.float false 8 (`Offset 0);
+  (* hand the global ARRAY_BUFFER binding back (see the note above) *)
+  Gl.bind_buffer Gl.array_buffer (Int32.to_int (Bigarray.Array1.get saved 0));
   (* Blit program. *)
   let blit_prog =
     let vs = Shader.compile ~kind:Gl.vertex_shader "pixelmap blit vertex" vertex_source in
