@@ -20,7 +20,8 @@ type t = {
   camera_loc : int;
   mutable camera : camera;
   mutable camera2d : Camera2d.t;
-  mutable cam_mode : [ `Box | `Cam2d ];  (* camera set last *)
+  mutable camera_matrix : Mat4.t;  (* used in `Matrix mode *)
+  mutable cam_mode : [ `Box | `Cam2d | `Matrix ];  (* camera set last *)
   mutable camera_dirty : bool;
   mutable vw : int;  (* viewport, for Camera2d.matrix *)
   mutable vh : int;
@@ -38,7 +39,7 @@ let gen_one gen =
   gen 1 ba;
   Int32.to_int (Bigarray.Array1.get ba 0)
 
-let create ?(camera = default_camera ~width:100.0 ~height:100.0) () =
+let create ?(camera = default_camera ~width:100.0 ~height:100.0) ?(depth = false) () =
   let vao = gen_one Gl.gen_vertex_arrays in
   let vbo = gen_one Gl.gen_buffers in
   let ebo = gen_one Gl.gen_buffers in
@@ -65,8 +66,13 @@ let create ?(camera = default_camera ~width:100.0 ~height:100.0) () =
   let white = Texture.create ~width:1 ~height:1 white_px in
   Gl.enable Gl.blend;
   Gl.blend_func Gl.src_alpha Gl.one_minus_src_alpha;
+  if depth then begin
+    Gl.enable Gl.depth_test;
+    Gl.depth_func Gl.lequal
+  end;
   { vao; vbo; ebo; program; camera_loc
   ; camera; camera2d = Camera2d.create ()
+  ; camera_matrix = Mat4.identity ()
   ; cam_mode = `Box; camera_dirty = true
   ; vw = 100; vh = 100
   ; white
@@ -88,6 +94,15 @@ let get_camera2d t = t.camera2d
 let set_camera2d t cam =
   t.camera2d <- cam;
   t.cam_mode <- `Cam2d;
+  t.camera_dirty <- true
+
+(** [set_camera_matrix t m] uses [m] (a full projection * view matrix,
+    e.g. [Mat4.perspective] composed with [Mat4.look_at]) as the camera;
+    it takes effect on the next [flush]. This is the escape hatch for 3D
+    rendering: primitives keep their world-space positions. *)
+let set_camera_matrix t m =
+  t.camera_matrix <- m;
+  t.cam_mode <- `Matrix;
   t.camera_dirty <- true
 
 let set_viewport t ~width ~height =
@@ -153,6 +168,7 @@ let flush ?mesh t =
       | `Cam2d ->
           Camera2d.matrix t.camera2d ~width:(float_of_int t.vw)
             ~height:(float_of_int t.vh)
+      | `Matrix -> t.camera_matrix
     in
     Gl.uniform_matrix4fv t.camera_loc 1 false m;
     t.camera_dirty <- false

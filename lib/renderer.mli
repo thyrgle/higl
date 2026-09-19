@@ -21,9 +21,12 @@ type camera = {
     bottom-left and (width,height) to the top-right, 1 unit = 1 pixel. *)
 val default_camera : width:float -> height:float -> camera
 
-(** [create ?camera ()] sets up GPU state. Requires a current GL context
-    (3.3+ for the default shader). Blending is enabled. *)
-val create : ?camera:camera -> unit -> t
+(** [create ?camera ?depth ()] sets up GPU state. Requires a current GL
+    context (3.3+ for the default shader). Blending is enabled. With
+    [depth = true] the depth test is enabled too ([GL_LESS]-or-equal),
+    for 3D content; the caller clears the depth buffer per pass with
+    [Tgl4.Gl.clear]. *)
+val create : ?camera:camera -> ?depth:bool -> unit -> t
 
 (** [get_camera t] is [t]'s current camera. *)
 val get_camera : t -> camera
@@ -36,10 +39,16 @@ val set_camera : t -> camera -> unit
 val get_camera2d : t -> Camera2d.t
 
 (** [set_camera2d t cam] replaces [t]'s 2D camera; it takes effect on the
-    next [flush]. Whichever of [set_camera]/[set_camera2d] ran last wins.
-    The matrix is computed from the current viewport, so [set_viewport]
-    also re-arms it. *)
+    next [flush]. Whichever of [set_camera]/[set_camera2d]/
+    [set_camera_matrix] ran last wins. The matrix is computed from the
+    current viewport, so [set_viewport] also re-arms it. *)
 val set_camera2d : t -> Camera2d.t -> unit
+
+(** [set_camera_matrix t m] uses [m] — a full projection * view matrix,
+    e.g. [Mat4.perspective] composed with [Mat4.look_at] — as the camera
+    for the next [flush]. The escape hatch for 3D rendering: geometry
+    keeps its world-space positions, [m] does the projection. *)
+val set_camera_matrix : t -> Mat4.t -> unit
 
 (** [set_viewport t ~width ~height] sets the GL viewport to
     [(0, 0, width, height)]. *)

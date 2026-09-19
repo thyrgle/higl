@@ -13,3 +13,4 @@ module Shape = Shape
 module Texture = Texture
 module Glsl = Glsl
 module Pixelmap = Pixelmap
+module Font = Font

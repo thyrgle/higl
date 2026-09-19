@@ -71,3 +71,44 @@ let rotate_z rad =
   m.{4} <- -.s;
   m.{5} <- c;
   m
+
+(** [perspective ~fovy ~aspect ~near ~far] is the standard OpenGL
+    perspective projection (right-handed, clip z in [-1, 1]) for a
+    vertical field of view of [fovy] radians, viewport aspect [aspect]
+    (width / height) and the given near/far planes. *)
+let perspective ~fovy ~aspect ~near ~far =
+  if near <= 0.0 || far <= near then invalid_arg "Mat4.perspective: bad planes";
+  if aspect <= 0.0 then invalid_arg "Mat4.perspective: bad aspect";
+  let f = 1.0 /. tan (fovy /. 2.0) in
+  let m = create () in
+  m.{0} <- f /. aspect;
+  m.{5} <- f;
+  m.{10} <- (far +. near) /. (near -. far);
+  m.{11} <- -1.0;
+  m.{14} <- (2.0 *. far *. near) /. (near -. far);
+  m
+
+module V3 = Gg.V3
+
+(** [look_at ~eye ~center ~up] is the right-handed view matrix placing
+    the camera at [eye], looking at [center], with [up] roughly the
+    screen's +Y direction. *)
+let look_at ~eye ~center ~up =
+  let f = V3.unit (V3.sub center eye) in
+  let s = V3.unit (V3.cross f up) in
+  let u = V3.cross s f in
+  let m = identity () in
+  (* column-major: column 0 holds row 0 of the transposed basis *)
+  m.{0} <- V3.x s;
+  m.{1} <- V3.x u;
+  m.{2} <- -.V3.x f;
+  m.{4} <- V3.y s;
+  m.{5} <- V3.y u;
+  m.{6} <- -.V3.y f;
+  m.{8} <- V3.z s;
+  m.{9} <- V3.z u;
+  m.{10} <- -.V3.z f;
+  m.{12} <- -.V3.dot s eye;
+  m.{13} <- -.V3.dot u eye;
+  m.{14} <- V3.dot f eye;
+  m

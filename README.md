@@ -27,6 +27,13 @@ frame.
 - **Pixel maps (GLSL ORM)** — describe fragment shaders with typed
   OCaml combinators instead of raw GLSL strings; neighborhood
   operations (`avg (nbhd self)`) compile to unrolled texel fetches
+- **Bitmap font** — an embedded public-domain 8x8 monospace font
+  (`Higl.Font`) baked into a texture atlas; text draws as batched
+  sprites with scale, aspect squeeze and tint
+- **3D-friendly** — `Mat4.perspective`/`Mat4.look_at` plus
+  `Renderer.set_camera_matrix` let a full projection*view matrix drive
+  the same primitive pipeline, and `Renderer.create ~depth:true`
+  enables the depth test
 
 ## Installation
 
